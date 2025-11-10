@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hacking Simulator</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      font-family: "Courier New", monospace;
+      background:#0a0e27;
+      color:#00ff00;
+      overflow-x:hidden;
+    }
+
+    /* Matrix background canvas (faint) */
+    .matrix-bg{position:fixed;inset:0;width:100%;height:100%;opacity:0.1;z-index:0;pointer-events:none}
+
+    .container{
+      position:relative;z-index:1;max-width:900px;margin:0 auto;padding:20px;min-height:100vh;
+    }
+
+    .header{text-align:center;padding:40px 0;border-bottom:2px solid #00ff00;margin-bottom:40px;text-shadow:0 0 10px #00ff00}
+    .header h1{font-size:2.5em;animation:glow 2s ease-in-out infinite}
+    @keyframes glow{
+      0%,100%{text-shadow:0 0 10px #00ff00,0 0 20px #00ff00}
+      50%{text-shadow:0 0 20px #00ff00,0 0 30px #00ff00,0 0 40px #00ff00}
+    }
+
+    .status{background:rgba(0,255,0,0.08);border:2px solid #00ff00;padding:18px;margin-bottom:30px;border-radius:6px}
+    .status-item{display:flex;justify-content:space-between;margin:8px 0;font-size:1.05em}
+
+    .input-section{background:rgba(0,255,0,0.03);border:2px solid #00ff00;padding:26px;border-radius:6px;margin-bottom:30px}
+    .input-section h2{text-align:center;margin-bottom:14px}
+
+    input[type="text"]{
+      width:100%;background:#000;border:2px solid #00ff00;color:#00ff00;padding:12px;font-family:inherit;font-size:1.05em;margin-bottom:16px;border-radius:4px
+    }
+    input:focus{outline:none;box-shadow:0 0 14px #00ff00}
+
+    button{
+      width:100%;background:#00ff00;color:#0a0e27;border:none;padding:12px;font-family:inherit;font-size:1.1em;font-weight:700;cursor:pointer;border-radius:4px;transition:all .2s
+    }
+    button:hover{transform:scale(1.02);background:#00cc00;box-shadow:0 0 20px #00ff00}
+    button:disabled{opacity:.5;cursor:not-allowed}
+
+    .terminal{
+      background:#000;border:2px solid #00ff00;padding:18px;height:360px;overflow-y:auto;border-radius:6px;display:none;font-size:0.95em;
+      white-space:pre-wrap;
+    }
+    .terminal.active{display:block}
+    .terminal-line{margin:6px 0;animation:fadeIn .25s}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+    .success{color:#00ff00}
+    .warning{color:#ffff00}
+    .error{color:#ff4444}
+
+    .progress-bar{width:100%;height:30px;background:#000;border:2px solid #00ff00;border-radius:6px;overflow:hidden;margin:18px 0;display:none}
+    .progress-bar.active{display:block}
+    .progress-fill{height:100%;background:linear-gradient(90deg,#00ff00,#00cc00);width:0;transition:width .25s;box-shadow:0 0 10px #00ff00}
+  </style>
+</head>
+<body>
+  <canvas id="matrix" class="matrix-bg"></canvas>
+
+  <div class="container">
+    <div class="header">
+      <h1>⚡ HACKING SIMULATOR ⚡</h1>
+      <p>alert hacking Tool</p>
+    </div>
+
+    <div class="status">
+      <div class="status-item"><span>SERVER STATUS:</span><span id="server-status">🟢 ONLINE</span></div>
+      <div class="status-item"><span>CONNECTION:</span><span id="connection">🔒 SECURE</span></div>
+      <div class="status-item"><span>ENCRYPTION:</span><span id="encryption">AES-256</span></div>
+    </div>
+
+    <div class="input-section">
+      <h2>[ ENTER TARGET NUMBER ]</h2>
+      <input id="target-number" type="text" placeholder="Enter any number..." maxlength="20" />
+      <button id="hack-btn">INITIATE HACK SEQUENCE</button>
+    </div>
+
+    <div class="progress-bar" id="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+    <div id="terminal" class="terminal" aria-live="polite"></div>
+  </div>
+
+  <script>
+    /* Matrix background */
+    const canvas = document.getElementById('matrix');
+    const ctx = canvas.getContext('2d');
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      initDrops();
+    }
+    window.addEventListener('resize', resize);
+
+    const fontSize = 14;
+    let columns = 0;
+    let drops = [];
+    const chars = '01アイウエオカキクケコサシスセソタチツテト';
+
+    function initDrops(){
+      columns = Math.floor(canvas.width / fontSize);
+      drops = new Array(columns).fill(1);
+    }
+    resize();
+
+    function drawMatrix(){
+      ctx.fillStyle = 'rgba(10,14,39,0.05)';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle = '#00ff00';
+      ctx.font = fontSize + 'px monospace';
+      for (let i=0;i<drops.length;i++){
+        const text = chars[Math.floor(Math.random()*chars.length)];
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
+      }
+    }
+    setInterval(drawMatrix, 35);
+
+    /* Hacking simulator logic */
+    const terminal = document.getElementById('terminal');
+    const progressBar = document.getElementById('progress-bar');
+    const progressFill = document.getElementById('progress-fill');
+    const hackBtn = document.getElementById('hack-btn');
+    const targetInput = document.getElementById('target-number');
+
+    function addLine(text = '', cls = 'success'){
+      const el = document.createElement('div');
+      el.className = 'terminal-line ' + cls;
+      el.textContent = text;
+      terminal.appendChild(el);
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    const codeSnippets = [
+      'def decrypt(key): return hashlib.sha256(key).hexdigest()',
+      'for i in range(256): socket.connect((host, port))',
+      'import subprocess; subprocess.run(["nmap", "-sV", target])',
+      'while True: packet = sniff(filter="tcp", count=1)',
+      'ssh_client.connect(hostname, username, password)',
+      'cursor.execute("SELECT * FROM users WHERE id=?")',
+      'requests.post(url, headers=headers, data=payload)',
+      'os.system("iptables -A INPUT -j DROP")',
+      'with open("/etc/passwd", "r") as f: data = f.read()',
+      'subprocess.Popen(["nc", "-lvp", "4444"])'
+    ];
+
+    function randomCode(){ return codeSnippets[Math.floor(Math.random()*codeSnippets.length)]; }
+
+    function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+    async function startHackingSequence(){
+      const t = targetInput.value.trim();
+      if (!t){ alert('Please enter a number!'); return; }
+
+      terminal.innerHTML = '';
+      terminal.classList.add('active');
+      progressBar.classList.add('active');
+      hackBtn.disabled = true;
+      progressFill.style.width = '0%';
+
+      addLine('[+] STARTING INITIALIZATION...', 'success');
+      await sleep(700);
+      addLine(`[+] Target identified: ${t}`, 'success');
+      await sleep(400);
+      addLine('[+] Loading hacking modules...', 'success');
+      progressFill.style.width = '15%';
+      await sleep(900);
+
+      addLine('', 'success');
+      addLine('[+] EXECUTING HACK SCRIPTS...', 'warning');
+      addLine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'warning');
+      await sleep(400);
+
+      // Simulated code execution loop (approx 20s)
+      const runMs = 20000;
+      const start = Date.now();
+      while (Date.now() - start < runMs){
+        addLine('>>> ' + randomCode(), 'success');
+        const p = 15 + ((Date.now() - start) / runMs) * 60;
+        progressFill.style.width = p + '%';
+        // variable delay
+        await sleep(80 + Math.random()*220);
+      }
+
+      addLine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'warning');
+      addLine('[+] Code execution completed!', 'success');
+      await sleep(700);
+
+      const finalSteps = [
+        {text: '[+] Bypassing firewall...', delay:600, progress:80},
+        {text: '[+] Establishing encrypted tunnel...', delay:700, progress:85},
+        {text: '[!] Decrypting data streams...', delay:800, progress:92, cls:'warning'},
+        {text: '[+] Extracting information...', delay:600, progress:98},
+        {text: '[✓] HACK COMPLETE!', delay:500, progress:100, cls:'success'}
+      ];
+
+      for (const s of finalSteps){
+        await sleep(s.delay);
+        addLine(s.text, s.cls || 'success');
+        progressFill.style.width = s.progress + '%';
+      }
+
+      await sleep(900);
+      addLine('', 'success');
+      addLine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'success');
+      addLine(`[✓] Target ${t} successfully accessed!`, 'success');
+      addLine('[✓] All systems breached!', 'success');
+      addLine('[✓] Data extraction complete!', 'success');
+      addLine('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'success');
+      addLine('', 'success');
+      addLine('[!] alert server is hacked.', 'warning');
+      addLine('[!]  Congrates you are hacked.', 'warning');
+
+      hackBtn.disabled = false;
+    }
+
+    hackBtn.addEventListener('click', startHackingSequence);
+    targetInput.addEventListener('keydown', e => { if (e.key === 'Enter') startHackingSequence(); });
+  </script>
+</body>
+</html>
